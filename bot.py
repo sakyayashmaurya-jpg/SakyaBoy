@@ -15,16 +15,33 @@ bot = commands.Bot(
     help_command=None
 )
 
+
 @bot.event
 async def on_ready():
+
+    await bot.tree.sync()
+
     print(f"✅ {bot.user} Online")
+    print("✅ Slash Commands Synced")
 
 
 async def main():
+
     async with bot:
+
         await init_db()
-        await bot.load_extension("cogs.ai_chat")
-        await bot.start(config.DISCORD_TOKEN)
+
+        await bot.load_extension(
+            "cogs.ai_chat"
+        )
+
+        await bot.load_extension(
+            "cogs.slash"
+        )
+
+        await bot.start(
+            config.DISCORD_TOKEN
+        )
 
 
 asyncio.run(main())

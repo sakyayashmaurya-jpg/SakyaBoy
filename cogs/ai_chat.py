@@ -4,6 +4,7 @@ from discord.ext import commands
 from utils.extractor import extract_memory
 from utils.memory_filter import should_extract_memory
 from utils.reply_engine import generate_reply
+from utils.rate_limit import is_rate_limited
 
 from utils.database import (
     save_user,
@@ -43,6 +44,13 @@ class AIChat(commands.Cog):
 
         if not clean_message:
             clean_message = "hi"
+
+        # Anti Spam
+        if is_rate_limited(
+            message.author.id,
+            clean_message
+        ):
+            return
 
         # Reply Context
         if (
