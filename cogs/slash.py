@@ -47,9 +47,7 @@ class Slash(commands.Cog):
 
         user = interaction.user
 
-        friendship = await get_friendship(
-            user.id
-        )
+        friendship = await get_friendship(user.id)
 
         if friendship:
             xp, level, total_messages, mood = friendship
@@ -59,10 +57,7 @@ class Slash(commands.Cog):
             total_messages = 0
             mood = "Neutral"
 
-        memories = await get_memories(
-            user.id
-        )
-
+        memories = await get_memories(user.id)
         memory_count = len(memories)
 
         embed = discord.Embed(
@@ -76,36 +71,92 @@ class Slash(commands.Cog):
 
         embed.add_field(
             name="❤️ Friendship Level",
-            value=level,
+            value=str(level),
             inline=True
         )
 
         embed.add_field(
             name="⭐ XP",
-            value=xp,
+            value=str(xp),
             inline=True
         )
 
         embed.add_field(
             name="💬 Messages",
-            value=total_messages,
+            value=str(total_messages),
             inline=True
         )
 
         embed.add_field(
             name="😊 Mood",
-            value=mood,
+            value=str(mood),
             inline=True
         )
 
         embed.add_field(
             name="🧠 Memories",
-            value=memory_count,
+            value=str(memory_count),
             inline=True
         )
 
         embed.set_footer(
             text=f"Requested by {user.name}"
+        )
+
+        await interaction.response.send_message(
+            embed=embed
+        )
+
+    # ----------------------------
+    # Memory Command
+    # ----------------------------
+    @app_commands.command(
+        name="memory",
+        description="See what SakyaBoy remembers about you."
+    )
+    async def memory(
+        self,
+        interaction: discord.Interaction
+    ):
+
+        user = interaction.user
+
+        memories = await get_memories(user.id)
+
+        if not memories:
+
+            embed = discord.Embed(
+                title="🧠 SakyaBoy Memory",
+                description="Mujhe abhi tak tumhare baare me kuch yaad nahi hai 😭",
+                color=discord.Color.orange()
+            )
+
+            await interaction.response.send_message(
+                embed=embed
+            )
+            return
+
+        embed = discord.Embed(
+            title="🧠 SakyaBoy Memory",
+            description="Ye cheeze mujhe tumhare baare me yaad hain.",
+            color=discord.Color.green()
+        )
+
+        for key, value in memories.items():
+
+            pretty_name = (
+                key.replace("_", " ")
+                .title()
+            )
+
+            embed.add_field(
+                name=f"📌 {pretty_name}",
+                value=value,
+                inline=False
+            )
+
+        embed.set_footer(
+            text=f"{len(memories)} memories stored"
         )
 
         await interaction.response.send_message(
