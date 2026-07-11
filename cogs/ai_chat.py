@@ -1,6 +1,7 @@
 import asyncio
 from discord.ext import commands
 
+from utils.fun import fun_reply
 from utils.ai import ask_ai
 from utils.database import (
     save_user,
@@ -20,33 +21,53 @@ class AIChat(commands.Cog):
         if message.author.bot:
             return
 
-        if message.channel.name != "sakya-ai":
+        # Reply if message is in AI channel OR bot is mentioned
+        if (
+            message.channel.name != "sakya-ai"
+            and self.bot.user not in message.mentions
+        ):
             return
 
-        # User register
+        # Remove bot mention from message
+        clean_message = message.content.replace(
+            self.bot.user.mention,
+            ""
+        ).strip()
+
+        if not clean_message:
+            clean_message = "hi"
+
+        # Save user
         await save_user(
             message.author.id,
             message.author.name
         )
 
-        # Previous history (current message se pehle)
-        history = await get_history(message.author.id)
+        # Fun Engine First
+        reply = fun_reply(clean_message)
 
-        # AI se reply lo
-        async with message.channel.typing():
+        # Agar fun reply nahi mila to AI use karo
+        if reply is None:
 
-            await asyncio.sleep(2)
-
-            reply = ask_ai(
-                history,
-                message.content
+            history = await get_history(
+                message.author.id,
+                limit=8
             )
 
-        # Ab dono messages save karo
+            async with message.channel.typing():
+
+                await asyncio.sleep(1)
+
+                reply = ask_ai(
+                    history,
+                    clean_message
+                )
+
+        # Save messages
         await save_message(
             message.author.id,
             "user",
-            message.content
+            clean_message
         )
 
         await save_message(
