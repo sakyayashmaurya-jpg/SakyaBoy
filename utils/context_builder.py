@@ -1,5 +1,6 @@
 from utils.personality import get_personality
 from utils.emotions import detect_emotion
+from utils.relevant_memory import get_relevant_memories
 
 
 def build_context(
@@ -11,13 +12,17 @@ def build_context(
 
     context = []
 
+    # -------------------------
     # Personality
+    # -------------------------
     context.append({
         "role": "system",
         "content": get_personality(level)
     })
 
+    # -------------------------
     # Emotion
+    # -------------------------
     emotion = detect_emotion(clean_message)
 
     context.append({
@@ -30,26 +35,36 @@ Don't mention the emotion explicitly.
 """
     })
 
-    # Memories
-    if memories:
+    # -------------------------
+    # Relevant Memories Only
+    # -------------------------
+    relevant_memories = get_relevant_memories(
+        memories,
+        clean_message
+    )
+
+    if relevant_memories:
 
         memory_text = "\n".join(
             f"{k}: {v}"
-            for k, v in memories.items()
+            for k, v in relevant_memories.items()
         )
 
         context.append({
             "role": "system",
             "content": f"""
-Known user facts:
+Relevant user facts:
 
 {memory_text}
 
-Use them only when relevant.
+Use them only when helpful.
 Don't dump memories.
 """
         })
 
+    # -------------------------
+    # Recent History
+    # -------------------------
     context.extend(history)
 
     return context
