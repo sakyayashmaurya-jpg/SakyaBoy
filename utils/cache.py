@@ -10,11 +10,14 @@ def get_cached_reply(question):
 
     question = question.lower().strip()
 
-    if question not in _cache:
+    data = _cache.get(question)
+
+    if data is None:
         return None
 
-    reply, created = _cache[question]
+    reply, created = data
 
+    # Expired
     if time.time() - created > CACHE_TIME:
         del _cache[question]
         return None
@@ -30,3 +33,11 @@ def save_cached_reply(question, reply):
         reply,
         time.time()
     )
+
+
+def clear_cache():
+    _cache.clear()
+
+
+def cache_size():
+    return len(_cache)

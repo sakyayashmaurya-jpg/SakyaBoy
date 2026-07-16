@@ -50,6 +50,15 @@ async def init_db():
         )
         """)
 
+        # AI Cache Table
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS ai_cache (
+            question TEXT PRIMARY KEY,
+            answer TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+
         await db.commit()
 
     print("✅ Database Ready")

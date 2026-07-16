@@ -11,9 +11,17 @@ from utils.humanizer import (
 )
 from utils.context_builder import build_context
 from utils.logger import logger
+
+# RAM Cache
 from utils.cache import (
     get_cached_reply,
     save_cached_reply
+)
+
+# SQLite Cache
+from utils.db_cache import (
+    get_cached_reply as get_db_cached_reply,
+    save_cached_reply as save_db_cached_reply
 )
 
 MAX_MESSAGE_LENGTH = 400
@@ -30,7 +38,7 @@ async def generate_reply(
     # -------------------------
     # Clean Message
     # -------------------------
-    clean_message = clean_message.strip()
+    clean_message = clean_message.strip().lower()
 
     if len(clean_message) > MAX_MESSAGE_LENGTH:
         clean_message = clean_message[:MAX_MESSAGE_LENGTH]
@@ -41,43 +49,48 @@ async def generate_reply(
     reply = fun_reply(clean_message)
 
     if reply:
-        logger.info(
-            f"Fun reply | {clean_message[:40]}"
-        )
+        logger.info(f"Fun reply | {clean_message[:40]}")
         return reply
 
     # -------------------------
-    # Humanizer
+    # Random Human Reply
     # -------------------------
     reply = random_small_reply()
 
     if reply:
-        logger.info(
-            "Random human reply"
-        )
+        logger.info("Random human reply")
         return reply
 
     # -------------------------
-    # Cache Check
+    # RAM Cache
     # -------------------------
-    cached = get_cached_reply(
-        clean_message
-    )
+    cached = get_cached_reply(clean_message)
+
+    if cached:
+        logger.info(f"RAM Cache Hit | {clean_message[:40]}")
+        return cached
+
+    # -------------------------
+    # SQLite Cache
+    # -------------------------
+    cached = await get_db_cached_reply(clean_message)
 
     if cached:
 
-        logger.info(
-            f"Cache Hit | {clean_message[:40]}"
+        logger.info(f"SQLite Cache Hit | {clean_message[:40]}")
+
+        # Load into RAM
+        save_cached_reply(
+            clean_message,
+            cached
         )
 
         return cached
 
-    logger.info(
-        f"Cache Miss | {clean_message[:40]}"
-    )
+    logger.info(f"Cache Miss | {clean_message[:40]}")
 
     # -------------------------
-    # Keep Recent History
+    # Recent History
     # -------------------------
     history = history[-4:]
 
@@ -100,9 +113,17 @@ async def generate_reply(
         )
 
         # -------------------------
-        # Save Cache
+        # Save RAM Cache
         # -------------------------
         save_cached_reply(
+            clean_message,
+            reply
+        )
+
+        # -------------------------
+        # Save SQLite Cache
+        # -------------------------
+        await save_db_cached_reply(
             clean_message,
             reply
         )
@@ -136,3 +157,4 @@ async def generate_reply(
             "😭 Kuch technical problem aa gayi.\n"
             "Thodi der baad fir try kar."
         )
+    
