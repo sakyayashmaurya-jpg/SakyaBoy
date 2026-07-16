@@ -1,6 +1,8 @@
 import asyncio
 import time
 
+from groq import RateLimitError
+
 from utils.fun import fun_reply
 from utils.ai import ask_ai
 from utils.humanizer import (
@@ -11,6 +13,9 @@ from utils.context_builder import build_context
 from utils.logger import logger
 
 
+MAX_MESSAGE_LENGTH = 400
+
+
 async def generate_reply(
     history,
     memories,
@@ -19,25 +24,39 @@ async def generate_reply(
 ):
     start = time.perf_counter()
 
-    # Fun replies first
+    # -------------------------
+    # Trim very long messages
+    # -------------------------
+    clean_message = clean_message.strip()
+
+    if len(clean_message) > MAX_MESSAGE_LENGTH:
+        clean_message = clean_message[:MAX_MESSAGE_LENGTH]
+
+    # -------------------------
+    # Fun Replies
+    # -------------------------
     reply = fun_reply(clean_message)
 
     if reply:
         logger.info(
-            f"Fun reply | Message: {clean_message}"
+            f"Fun reply | {clean_message[:40]}"
         )
         return reply
 
-    # Random human replies
+    # -------------------------
+    # Humanizer
+    # -------------------------
     reply = random_small_reply()
 
     if reply:
-        logger.info(
-            "Random human reply used"
-        )
+        logger.info("Random human reply")
         return reply
 
-    # Build AI Context
+    # -------------------------
+    # Keep only recent history
+    # -------------------------
+    history = history[-4:]
+
     messages = build_context(
         history=history,
         memories=memories,
@@ -59,15 +78,27 @@ async def generate_reply(
         elapsed = time.perf_counter() - start
 
         logger.info(
-            f"AI replied in {elapsed:.2f}s | User: {clean_message[:40]}"
+            f"AI replied in {elapsed:.2f}s"
         )
 
         return reply
 
-    except Exception as e:
+    except RateLimitError:
 
-        logger.exception(
-            f"AI Error: {e}"
+        logger.warning(
+            "Groq rate limit reached."
         )
 
-        return "Abe 😭 mera dimaag thoda hang ho gaya... ek baar fir bol."
+        return (
+            "😭 Bhai mera AI quota abhi khatam ho gaya.\n"
+            "2-5 minute baad fir try kar."
+        )
+
+    except Exception as e:
+
+        logger.exception(e)
+
+        return (
+            "😭 Kuch technical problem aa gayi.\n"
+            "Thodi der baad fir try kar."
+        )
