@@ -6,6 +6,7 @@ from utils.memory_filter import should_extract_memory
 from utils.reply_engine import generate_reply
 from utils.rate_limit import is_rate_limited
 from utils.cooldown import is_on_cooldown
+from utils.queue import run_ai
 
 from utils.database import (
     save_user,
@@ -46,26 +47,20 @@ class AIChat(commands.Cog):
         if not clean_message:
             clean_message = "hi"
 
-        # -------------------------
         # Anti Spam
-        # -------------------------
         if is_rate_limited(
             message.author.id,
             clean_message
         ):
             return
 
-        # -------------------------
         # User Cooldown
-        # -------------------------
         if is_on_cooldown(
             message.author.id
         ):
             return
 
-        # -------------------------
         # Reply Context
-        # -------------------------
         if (
             message.reference
             and message.reference.resolved
@@ -80,17 +75,13 @@ class AIChat(commands.Cog):
                 f"{clean_message}"
             )
 
-        # -------------------------
         # Save User
-        # -------------------------
         await save_user(
             message.author.id,
             message.author.name
         )
 
-        # -------------------------
         # Friendship
-        # -------------------------
         await update_friendship(
             message.author.id
         )
@@ -106,9 +97,7 @@ class AIChat(commands.Cog):
                 0, 1, 0, "neutral"
             )
 
-        # -------------------------
         # Memory Extraction
-        # -------------------------
         if should_extract_memory(clean_message):
 
             memories = extract_memory(
@@ -122,36 +111,31 @@ class AIChat(commands.Cog):
                     value
                 )
 
-        # -------------------------
-        # Chat History
-        # -------------------------
+        # History
         history = await get_history(
             message.author.id,
             limit=8
         )
 
-        # -------------------------
         # Memories
-        # -------------------------
         memories = await get_memories(
             message.author.id
         )
 
-        # -------------------------
         # Generate Reply
-        # -------------------------
         async with message.channel.typing():
 
-            reply = await generate_reply(
-                history=history,
-                memories=memories,
-                level=level,
-                clean_message=clean_message
-            )
+            async def ai_task():
+                return await generate_reply(
+                    history=history,
+                    memories=memories,
+                    level=level,
+                    clean_message=clean_message
+                )
 
-        # -------------------------
+            reply = await run_ai(ai_task)
+
         # Save Conversation
-        # -------------------------
         await save_message(
             message.author.id,
             "user",
@@ -164,9 +148,7 @@ class AIChat(commands.Cog):
             reply
         )
 
-        # -------------------------
         # Send Reply
-        # -------------------------
         await message.reply(reply)
 
 
