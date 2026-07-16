@@ -11,7 +11,10 @@ from utils.humanizer import (
 )
 from utils.context_builder import build_context
 from utils.logger import logger
-
+from utils.cache import (
+    get_cached_reply,
+    save_cached_reply
+)
 
 MAX_MESSAGE_LENGTH = 400
 
@@ -25,7 +28,7 @@ async def generate_reply(
     start = time.perf_counter()
 
     # -------------------------
-    # Trim very long messages
+    # Clean Message
     # -------------------------
     clean_message = clean_message.strip()
 
@@ -49,11 +52,32 @@ async def generate_reply(
     reply = random_small_reply()
 
     if reply:
-        logger.info("Random human reply")
+        logger.info(
+            "Random human reply"
+        )
         return reply
 
     # -------------------------
-    # Keep only recent history
+    # Cache Check
+    # -------------------------
+    cached = get_cached_reply(
+        clean_message
+    )
+
+    if cached:
+
+        logger.info(
+            f"Cache Hit | {clean_message[:40]}"
+        )
+
+        return cached
+
+    logger.info(
+        f"Cache Miss | {clean_message[:40]}"
+    )
+
+    # -------------------------
+    # Keep Recent History
     # -------------------------
     history = history[-4:]
 
@@ -75,7 +99,17 @@ async def generate_reply(
             clean_message
         )
 
-        elapsed = time.perf_counter() - start
+        # -------------------------
+        # Save Cache
+        # -------------------------
+        save_cached_reply(
+            clean_message,
+            reply
+        )
+
+        elapsed = (
+            time.perf_counter() - start
+        )
 
         logger.info(
             f"AI replied in {elapsed:.2f}s"
